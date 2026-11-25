@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CRUD de productos | Northwind</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Equipo 5 · Northwind API</p>
+        <h1>Catálogo de productos</h1>
+        <p class="subtitle">CRUD con cuatro enfoques de asincronismo en JavaScript.</p>
+      </div>
+      <div class="page-actions">
+        <a class="button button-secondary" href="catalogo-productos.html">Ver catálogo</a>
+        <button id="logoutButton" class="button button-secondary hidden" type="button">Cerrar sesión</button>
+      </div>
+    </header>
+
+    <section id="loginPanel" class="card">
+      <h2>Iniciar sesión</h2>
+      <form id="loginForm" class="form-grid compact-form">
+        <label>Usuario<input id="username" name="username" required autocomplete="username"></label>
+        <label>Contraseña<input id="password" name="password" type="password" required autocomplete="current-password"></label>
+        <button id="loginButton" class="button button-primary" type="submit">Ingresar</button>
+      </form>
+      <p class="hint">Usa un usuario existente de la API. Se requiere Admin o Editor para escribir.</p>
+    </section>
+
+    <section id="appPanel" class="hidden">
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+
+      <section class="card toolbar">
+        <div>
+          <h2>Productos</h2>
+          <p id="sessionUser" class="hint"></p>
+        </div>
+        <form id="searchForm" class="search-form">
+          <label class="sr-only" for="search">Buscar</label>
+          <input id="search" type="search" placeholder="Buscar producto...">
+          <button id="searchButton" class="button button-secondary" type="submit">Buscar</button>
+        </form>
+        <button id="newButton" class="button button-primary" type="button">Nuevo producto</button>
+      </section>
+
+      <section class="card table-card">
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Producto</th><th>Presentación</th><th>Precio</th><th>Stock</th><th>Categoría</th><th>Acciones</th></tr>
+            </thead>
+            <tbody id="productsBody"></tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <button id="previousButton" class="button button-secondary" type="button">Anterior</button>
+          <span id="pageInfo">Página 1</span>
+          <button id="nextButton" class="button button-secondary" type="button">Siguiente</button>
+        </div>
+      </section>
+
+      <section id="formCard" class="card form-card hidden">
+        <div class="form-heading">
+          <h2 id="formTitle">Nuevo producto</h2>
+          <button id="cancelButton" class="button button-secondary" type="button">Cancelar</button>
+        </div>
+        <form id="productForm" class="form-grid">
+          <input id="productId" type="hidden">
+          <label>Nombre del producto<input id="productName" maxlength="40" required></label>
+          <label>Cantidad por unidad<input id="quantityPerUnit" maxlength="20"></label>
+          <label>Precio unitario<input id="unitPrice" type="number" min="0" step="0.0001"></label>
+          <label>Unidades en stock<input id="unitsInStock" type="number" min="0" max="32767"></label>
+          <label>Proveedor<select id="supplierId" required><option value="">Seleccione...</option></select></label>
+          <label>Categoría<select id="categoryId" required><option value="">Seleccione...</option></select></label>
+          <div class="form-actions">
+            <button id="saveButton" class="button button-primary" type="submit">Guardar producto</button>
+            <span id="formStatus" class="hint"></span>
+          </div>
+        </form>
+      </section>
+    </section>
+  </main>
+  <script src="products-crud.js" defer></script>
+</body>
+</html>
