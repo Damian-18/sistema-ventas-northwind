@@ -13,13 +13,13 @@
 * [x] Documentar brevemente en `README.md` (o sección de configuración) cómo configurar User Secrets / variables de entorno.
 
 ## Fase 1: Base de Datos y Modelos
-* [ ] Crear `Database/002_seguridad_y_baja_logica.sql` (idempotente, respetando mayúsculas/minúsculas exactas de las tablas en `nwind`) agregando:
+* [x] Crear `Database/002_seguridad_y_baja_logica.sql` (idempotente, respetando mayúsculas/minúsculas exactas de las tablas en `nwind`) agregando:
   * `failed_login_attempts`, `lockout_end`, `customer_id` (`CHAR(5) NULL`), `employee_id` (`INT NULL`) en `api_users`.
   * `is_active` en `customers`.
   * `is_active` en `employees`.
-* [ ] Actualizar modelo `ApiUser` y configuración en `UsuariosDB.cs` (`CustomerId` mapeado a `CHAR(5)`).
-* [ ] Actualizar modelos `Customer` y `Employee` y su configuración en `ContextoDB.cs`.
-* [ ] Crear clase de constantes `AppRoles` (`Admin`, `Empleado`, `Cliente`) y actualizar la política `WriteCatalog` en `Program.cs` para usar `Admin` y `Empleado` (en lugar de `Editor`).
+* [x] Actualizar modelo `ApiUser` y configuración en `UsuariosDB.cs` (`CustomerId` mapeado a `CHAR(5)`).
+* [x] Actualizar modelos `Customer` y `Employee` y su configuración en `ContextoDB.cs`.
+* [x] Crear clase de constantes `AppRoles` (`Admin`, `Empleado`, `Cliente`) y actualizar la política `WriteCatalog` en `Program.cs` para usar `Admin` y `Empleado` (en lugar de `Editor`).
 
 ## Fase 2: Seguridad Transversal (Middlewares y Sanitización)
 * [ ] Configurar `UseForwardedHeaders()` en `Program.cs` (para `X-Forwarded-For` y `X-Forwarded-Proto` en Azure/hosting).
@@ -86,3 +86,4 @@
 | Fecha | Fase | Estado | Notas / Archivos modificados / Bloqueos |
 | :--- | :--- | :--- | :--- |
 | 2026-11-24 | Fase 0 | Completa | Actualizados `appsettings.json`, `README.md`, `Equipo5.Api.csproj` (UserSecretsId) y este archivo. Credenciales reemplazadas por placeholders; agregados valores de seguridad y lista de orígenes CORS vacía. `dotnet build` correcto (0 advertencias, 0 errores). Antes de ejecutar localmente, configurar conexión MySQL, clave JWT y origen frontend con User Secrets; en producción, usar variables de entorno. Los archivos reales se llaman `Specs_backend.md` y `tasks.md`. |
+| 2026-11-24 | Fase 1 | Completa | Creado `Database/002_seguridad_y_baja_logica.sql` con alteraciones e índices condicionales; actualizados `ApiUser`, `Customer`, `Employee`, ambos DbContext, nueva clase `AppRoles`, política `WriteCatalog` y este archivo. Pendiente del usuario: ejecutar el script sobre `nwind` local y hacer commit. `dotnet build` correcto (0 advertencias, 0 errores). |

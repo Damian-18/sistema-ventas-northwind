@@ -13,4 +13,8 @@ public class ApiUser
     public bool IsActive { get; set; } = true;
     [JsonIgnore] public string SecurityStamp { get; set; } = Guid.NewGuid().ToString("N");
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public int FailedLoginAttempts { get; set; }
+    public DateTime? LockoutEnd { get; set; }
+    public string? CustomerId { get; set; }
+    public int? EmployeeId { get; set; }
 }

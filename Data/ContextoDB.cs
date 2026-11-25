@@ -54,6 +54,11 @@ public partial class ContextoDB : DbContext
 
             entity.ToTable("customers");
 
+            entity.Property(e => e.IsActive)
+                .HasColumnName("is_active")
+                .HasColumnType("tinyint(1)")
+                .HasDefaultValue(true);
+
             entity.HasIndex(e => e.City, "City");
 
             entity.HasIndex(e => e.CompanyName, "CompanyName");
@@ -121,6 +126,11 @@ public partial class ContextoDB : DbContext
             entity.HasKey(e => e.EmployeeId).HasName("PRIMARY");
 
             entity.ToTable("employees");
+
+            entity.Property(e => e.IsActive)
+                .HasColumnName("is_active")
+                .HasColumnType("tinyint(1)")
+                .HasDefaultValue(true);
 
             entity.HasIndex(e => e.ReportsTo, "FK_Employees_Employees");
 

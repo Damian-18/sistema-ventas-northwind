@@ -11,6 +11,8 @@ public partial class Employee
 
     public string FirstName { get; set; } = null!;
 
+    public bool IsActive { get; set; } = true;
+
     public string? Title { get; set; }
 
     public string? TitleOfCourtesy { get; set; }

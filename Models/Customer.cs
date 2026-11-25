@@ -9,6 +9,8 @@ public partial class Customer
 
     public string CompanyName { get; set; } = null!;
 
+    public bool IsActive { get; set; } = true;
+
     public string? ContactName { get; set; }
 
     public string? ContactTitle { get; set; }

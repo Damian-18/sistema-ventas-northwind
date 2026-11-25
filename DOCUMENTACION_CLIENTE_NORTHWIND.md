@@ -1,4 +1,6 @@
-# Equipo 5 — Contrato de API para frontend
+# Equipo5.Api — Notas heredadas de integración del cliente web Northwind
+
+> **Aviso:** este documento conserva ejemplos de una versión anterior del contrato (incluidos los roles Editor/Lector y rutas detalladas). No debe usarse como contrato vigente. La fuente de verdad para el backend actual es `Specs_backend.md`; los endpoints no se modifican en esta limpieza.
 
 La URL real de IIS la proporciona el Equipo 5: `http://IP_DEL_EQUIPO5:5055` o su URL HTTPS. No se necesita Swagger ni el proyecto C#. Las credenciales de prueba antiguas ya no aplican: el Equipo 5 debe crear y entregar una cuenta **Editor** para realizar CRUD, o **Lector** para consultar.
 

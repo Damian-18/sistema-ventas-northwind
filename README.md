@@ -17,7 +17,7 @@ En producción, configura los mismos valores como variables de entorno: `Connect
 
 ## Qué cambió
 
-- Se retiraron Equipo2Client, Equipo2Controller y su configuración. Esta API ya no consume servicios del otro equipo.
+- La API está orientada al cliente web Northwind y gestiona su propio catálogo y autenticación.
 - Productos, categorías y proveedores tienen listado, consulta por ID, creación, actualización y eliminación.
 - Se conserva GET /api/clientes, solo de consulta.
 - Los usuarios ahora se guardan en la tabla `api_users` de la misma base configurada. Los modelos y el contexto de Northwind se conservan.

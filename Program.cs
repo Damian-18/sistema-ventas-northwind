@@ -47,7 +47,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
         }
     };
 });
-builder.Services.AddAuthorization(o => o.AddPolicy("WriteCatalog", p => p.RequireRole("Admin", "Editor")));
+builder.Services.AddAuthorization(o => o.AddPolicy("WriteCatalog", p => p.RequireRole(AppRoles.Admin, AppRoles.Empleado)));
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
