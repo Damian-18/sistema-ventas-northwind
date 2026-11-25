@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using MySql.Data.MySqlClient;
 
 var builder = WebApplication.CreateBuilder(args.Where(a => a != "--init-users").ToArray());
 var config = builder.Configuration;
@@ -18,9 +19,15 @@ var key = config["Jwt:Key"] ?? "";
 if (Encoding.UTF8.GetByteCount(key) < 32 || string.IsNullOrWhiteSpace(config["Jwt:Issuer"])
     || string.IsNullOrWhiteSpace(config["Jwt:Audience"]) || config.GetValue<int>("Jwt:ExpirationMinutes") is < 1 or > 1440)
     throw new InvalidOperationException("Revisa Jwt: Key debe tener al menos 32 bytes; Issuer, Audience y ExpirationMinutes son obligatorios.");
+if (config.GetValue<int>("Security:LockoutMinutes") < 1 || config.GetValue<int>("Security:MaxFailedLoginAttempts") < 1)
+    throw new InvalidOperationException("Security:LockoutMinutes y Security:MaxFailedLoginAttempts deben ser mayores que cero.");
 
-builder.Services.AddDbContext<ContextoDB>(o => o.UseMySQL(config.GetConnectionString("Northwind")!));
-builder.Services.AddDbContext<UsuariosDB>(o => o.UseMySQL(config.GetConnectionString("Northwind")!));
+var connectionString = config.GetConnectionString("Northwind")!;
+builder.Services.AddScoped<MySqlConnection>(_ => new MySqlConnection(connectionString));
+builder.Services.AddDbContext<ContextoDB>((services, options) =>
+    options.UseMySQL(services.GetRequiredService<MySqlConnection>()));
+builder.Services.AddDbContext<UsuariosDB>((services, options) =>
+    options.UseMySQL(services.GetRequiredService<MySqlConnection>()));
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -55,7 +62,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
             if (!int.TryParse(context.Principal?.FindFirst("sub")?.Value, out var id)) { context.Fail("Token inválido."); return; }
             var db = context.HttpContext.RequestServices.GetRequiredService<UsuariosDB>();
             var user = await db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Id == id, context.HttpContext.RequestAborted);
-            if (user is null || !user.IsActive || user.SecurityStamp != context.Principal?.FindFirst("stamp")?.Value
+            var stamp = context.Principal?.FindFirst("security_stamp")?.Value
+                ?? context.Principal?.FindFirst("stamp")?.Value;
+            if (user is null || !user.IsActive || user.SecurityStamp != stamp
                 || user.Role != context.Principal?.FindFirst("role")?.Value)
                 context.Fail("Sesión revocada.");
         }

@@ -9,7 +9,7 @@ public class ApiUser
     public string Username { get; set; } = "";
     [JsonIgnore] public string NormalizedUsername { get; set; } = "";
     [JsonIgnore] public string PasswordHash { get; set; } = "";
-    public string Role { get; set; } = "Lector";
+    public string Role { get; set; } = "Cliente";
     public bool IsActive { get; set; } = true;
     [JsonIgnore] public string SecurityStamp { get; set; } = Guid.NewGuid().ToString("N");
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;

@@ -30,12 +30,12 @@
 * [x] Revisar `ApiExceptionHandler.cs` para garantizar mensajes claros en español sin filtrar detalles internos de MySQL.
 
 ## Fase 3: Autenticación, Bloqueo (3 Intentos) y Registro de Clientes
-* [ ] Actualizar `TokenService.cs` para incluir claims `customer_id` y `employee_id` cuando correspondan.
-* [ ] Implementar lógica de bloqueo tras 3 intentos fallidos (`423 Locked`) en `POST /api/auth/login` y reinicio al iniciar sesión correctamente.
-* [ ] Implementar `POST /api/auth/register` (registro autónomo de clientes con creación transaccional en `customers` + `api_users`, validación de duplicados y generación de `CustomerId` único de 5 caracteres `CHAR(5)`).
-* [ ] Agregar Rate Limiting a `/api/auth/register` (manteniendo el de `/api/auth/login` y `/api/auth/password`).
-* [ ] Actualizar `GET /api/auth/me` para devolver `CustomerId` y `EmployeeId` si aplica.
-* [ ] Actualizar `UserView` y `UsersController.cs`:
+* [x] Actualizar `TokenService.cs` para incluir claims `customer_id` y `employee_id` cuando correspondan.
+* [x] Implementar lógica de bloqueo tras 3 intentos fallidos (`423 Locked`) en `POST /api/auth/login` y reinicio al iniciar sesión correctamente.
+* [x] Implementar `POST /api/auth/register` (registro autónomo de clientes con creación transaccional en `customers` + `api_users`, validación de duplicados y generación de `CustomerId` único de 5 caracteres `CHAR(5)`).
+* [x] Agregar Rate Limiting a `/api/auth/register` (manteniendo el de `/api/auth/login` y `/api/auth/password`).
+* [x] Actualizar `GET /api/auth/me` para devolver `CustomerId` y `EmployeeId` si aplica.
+* [x] Actualizar `UserView` y `UsersController.cs`:
   * Validar roles contra `AppRoles`.
   * Exponer estado de bloqueo (`FailedLoginAttempts`, `LockoutEnd`, `IsLockedOut`) y `CustomerId`/`EmployeeId` en `UserView`.
   * Agregar `PUT /api/usuarios/{id}/desbloquear` (solo `Admin`).
@@ -86,5 +86,6 @@
 | Fecha | Fase | Estado | Notas / Archivos modificados / Bloqueos |
 | :--- | :--- | :--- | :--- |
 | 2026-11-24 | Fase 0 | Completa | Actualizados `appsettings.json`, `README.md`, `Equipo5.Api.csproj` (UserSecretsId) y este archivo. Credenciales reemplazadas por placeholders; agregados valores de seguridad y lista de orígenes CORS vacía. `dotnet build` correcto (0 advertencias, 0 errores). Antes de ejecutar localmente, configurar conexión MySQL, clave JWT y origen frontend con User Secrets; en producción, usar variables de entorno. Los archivos reales se llaman `Specs_backend.md` y `tasks.md`. |
-| 2026-11-24 | Fase 1 | Completa | Creado `Database/002_seguridad_y_baja_logica.sql` con alteraciones e índices condicionales; actualizados `ApiUser`, `Customer`, `Employee`, ambos DbContext, nueva clase `AppRoles`, política `WriteCatalog` y este archivo. Pendiente del usuario: ejecutar el script sobre `nwind` local y hacer commit. `dotnet build` correcto (0 advertencias, 0 errores). |
+| 2026-11-24 | Fase 1 | Completa | Creado `Database/002_seguridad_y_baja_logica.sql` con alteraciones e índices condicionales; actualizados `ApiUser`, `Customer`, `Employee`, ambos DbContext, nueva clase `AppRoles`, política `WriteCatalog` y este archivo. El usuario confirmó la ejecución del script sobre `nwind` y el commit. `dotnet build` correcto (0 advertencias, 0 errores). |
 | 2026-11-24 | Fase 2 | Completa | Configurados `ForwardedHeaders`, CORS limitado, HTTPS/HSTS y cabeceras globales; añadido filtro de sanitización global y revisado `ApiExceptionHandler`. Modificados `Program.cs`, `appsettings.json`, `ApiExceptionHandler.cs`, `README.md` y este archivo; creados `SecurityHeadersMiddleware.cs` e `InputSanitizer.cs`. `dotnet build` correcto (0 advertencias, 0 errores); comprobaciones HTTP locales confirmaron redirección HTTPS, cabeceras, CORS/HSTS detrás de proxy y rechazo XSS. Configurar `Cors:AllowedOrigins` y las IPs de proxy confiables antes del despliegue. |
+| 2026-11-24 | Fase 3 | Completa | Actualizados `Program.cs` (conexión MySQL scoped compartida y validación de configuración), `AuthController.cs`, `UsersController.cs`, `UserContracts.cs`, `TokenService.cs`, `ApiUser.cs`, `AppRoles.cs` y este archivo. El registro en `customers` + `api_users` usa la misma conexión y transacción; agregados bloqueo, desbloqueo Admin, registro y claims de vínculos. `dotnet build` correcto (0 advertencias, 0 errores). No se hicieron escrituras de prueba; Windows App Control bloqueó la carga del DLL al intentar validar el runtime. |
