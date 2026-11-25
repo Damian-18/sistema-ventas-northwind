@@ -22,12 +22,12 @@
 * [x] Crear clase de constantes `AppRoles` (`Admin`, `Empleado`, `Cliente`) y actualizar la política `WriteCatalog` en `Program.cs` para usar `Admin` y `Empleado` (en lugar de `Editor`).
 
 ## Fase 2: Seguridad Transversal (Middlewares y Sanitización)
-* [ ] Configurar `UseForwardedHeaders()` en `Program.cs` (para `X-Forwarded-For` y `X-Forwarded-Proto` en Azure/hosting).
-* [ ] Implementar middleware de cabeceras de seguridad HTTP (`X-Frame-Options: DENY`, `Content-Security-Policy: frame-ancestors 'none'`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`) y registrarlo en `Program.cs`.
-* [ ] Implementar helper/filtro `InputSanitizer` para prevenir XSS en todos los DTOs de entrada.
-* [ ] Restringir CORS en `Program.cs` usando `Cors:AllowedOrigins`.
-* [ ] Habilitar `UseHttpsRedirection()` y `UseHsts()` (en entornos no-Development).
-* [ ] Revisar `ApiExceptionHandler.cs` para garantizar mensajes claros en español sin filtrar detalles internos de MySQL.
+* [x] Configurar `UseForwardedHeaders()` en `Program.cs` (para `X-Forwarded-For` y `X-Forwarded-Proto` en Azure/hosting).
+* [x] Implementar middleware de cabeceras de seguridad HTTP (`X-Frame-Options: DENY`, `Content-Security-Policy: frame-ancestors 'none'`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`) y registrarlo en `Program.cs`.
+* [x] Implementar helper/filtro `InputSanitizer` para prevenir XSS en todos los DTOs de entrada.
+* [x] Restringir CORS en `Program.cs` usando `Cors:AllowedOrigins`.
+* [x] Habilitar `UseHttpsRedirection()` y `UseHsts()` (en entornos no-Development).
+* [x] Revisar `ApiExceptionHandler.cs` para garantizar mensajes claros en español sin filtrar detalles internos de MySQL.
 
 ## Fase 3: Autenticación, Bloqueo (3 Intentos) y Registro de Clientes
 * [ ] Actualizar `TokenService.cs` para incluir claims `customer_id` y `employee_id` cuando correspondan.
@@ -87,3 +87,4 @@
 | :--- | :--- | :--- | :--- |
 | 2026-11-24 | Fase 0 | Completa | Actualizados `appsettings.json`, `README.md`, `Equipo5.Api.csproj` (UserSecretsId) y este archivo. Credenciales reemplazadas por placeholders; agregados valores de seguridad y lista de orígenes CORS vacía. `dotnet build` correcto (0 advertencias, 0 errores). Antes de ejecutar localmente, configurar conexión MySQL, clave JWT y origen frontend con User Secrets; en producción, usar variables de entorno. Los archivos reales se llaman `Specs_backend.md` y `tasks.md`. |
 | 2026-11-24 | Fase 1 | Completa | Creado `Database/002_seguridad_y_baja_logica.sql` con alteraciones e índices condicionales; actualizados `ApiUser`, `Customer`, `Employee`, ambos DbContext, nueva clase `AppRoles`, política `WriteCatalog` y este archivo. Pendiente del usuario: ejecutar el script sobre `nwind` local y hacer commit. `dotnet build` correcto (0 advertencias, 0 errores). |
+| 2026-11-24 | Fase 2 | Completa | Configurados `ForwardedHeaders`, CORS limitado, HTTPS/HSTS y cabeceras globales; añadido filtro de sanitización global y revisado `ApiExceptionHandler`. Modificados `Program.cs`, `appsettings.json`, `ApiExceptionHandler.cs`, `README.md` y este archivo; creados `SecurityHeadersMiddleware.cs` e `InputSanitizer.cs`. `dotnet build` correcto (0 advertencias, 0 errores); comprobaciones HTTP locales confirmaron redirección HTTPS, cabeceras, CORS/HSTS detrás de proxy y rechazo XSS. Configurar `Cors:AllowedOrigins` y las IPs de proxy confiables antes del despliegue. |

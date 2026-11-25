@@ -13,7 +13,7 @@ dotnet user-secrets set "Jwt:Key" "TU_CLAVE_ALEATORIA_DE_AL_MENOS_32_BYTES"
 dotnet user-secrets set "Cors:AllowedOrigins:0" "http://localhost:5500"
 ```
 
-En producción, configura los mismos valores como variables de entorno: `ConnectionStrings__Northwind`, `Jwt__Key` y `Cors__AllowedOrigins__0` (agrega índices consecutivos para más orígenes). En Azure, se configuran como Application settings/Connection strings del servicio. No guardes credenciales ni claves reales en `appsettings.json` ni en el repositorio. La lista `Cors:AllowedOrigins` está vacía de forma predeterminada; agrega los orígenes exactos del frontend local y desplegado.
+En producción, configura los mismos valores como variables de entorno: `ConnectionStrings__Northwind`, `Jwt__Key` y `Cors__AllowedOrigins__0` (agrega índices consecutivos para más orígenes). Para un proxy inverso, configura también `ForwardedHeaders__KnownProxies__0` con la IP del proxy confiable (índices consecutivos para varios). En Azure, usa Application settings/Connection strings del servicio. No guardes credenciales ni claves reales en `appsettings.json` ni en el repositorio. Las listas de orígenes CORS y proxies confiables están vacías de forma predeterminada; agrega los valores exactos de tu entorno.
 
 ## Qué cambió
 
@@ -143,7 +143,7 @@ El comando crea únicamente api_users si falta y el primer administrador. Se nie
 
 La actualización de código no modifica automáticamente una publicación IIS existente; hay que volver a publicar. Si IIS devuelve 405 en PUT/DELETE, comprueba que se haya copiado web.config y que WebDAV esté deshabilitado para el sitio. Si una directiva bloqueada provoca 500.19, el administrador de IIS debe permitir esa configuración o deshabilitar WebDAV desde IIS.
 
-Para transmitir usuarios, contraseñas y tokens, usa HTTPS. La restricción efectiva de CORS se implementará en la fase de seguridad; hasta entonces, evita exponer el servicio a redes no confiables. El usuario MySQL de ejecución necesita SELECT/INSERT/UPDATE/DELETE, pero no CREATE después de inicializar.
+La API aplica redirección HTTPS, HSTS fuera de Development, cabeceras de seguridad y CORS limitado a `Cors:AllowedOrigins`. `ForwardedHeaders:KnownProxies` debe contener solo IPs de proxies de confianza; no expongas la aplicación directamente a clientes que puedan falsificar esas cabeceras. El usuario MySQL de ejecución necesita SELECT/INSERT/UPDATE/DELETE, pero no CREATE después de inicializar.
 
 ## Verificación y límites
 

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using System.Threading.RateLimiting;
 using Equipo5.Api.Data;
@@ -5,6 +6,7 @@ using Equipo5.Api.Infrastructure;
 using Equipo5.Api.Models;
 using Equipo5.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -19,6 +21,18 @@ if (Encoding.UTF8.GetByteCount(key) < 32 || string.IsNullOrWhiteSpace(config["Jw
 
 builder.Services.AddDbContext<ContextoDB>(o => o.UseMySQL(config.GetConnectionString("Northwind")!));
 builder.Services.AddDbContext<UsuariosDB>(o => o.UseMySQL(config.GetConnectionString("Northwind")!));
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = 1;
+
+    foreach (var proxyAddress in config.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [])
+    {
+        if (!IPAddress.TryParse(proxyAddress, out var address))
+            throw new InvalidOperationException("ForwardedHeaders:KnownProxies debe contener direcciones IP válidas.");
+        options.KnownProxies.Add(address);
+    }
+});
 builder.Services.AddScoped<IPasswordHasher<ApiUser>, PasswordHasher<ApiUser>>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<NorthwindService>();
@@ -55,10 +69,19 @@ builder.Services.AddRateLimiter(options =>
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
-builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+var allowedOrigins = config.GetSection("Cors:AllowedOrigins").Get<string[]>()?
+    .Where(origin => !string.IsNullOrWhiteSpace(origin))
+    .Select(origin => origin.Trim())
+    .ToArray() ?? [];
+builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
+{
+    if (allowedOrigins.Length > 0)
+        policy.WithOrigins(allowedOrigins);
+    policy.AllowAnyHeader().AllowAnyMethod();
+}));
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.Filters.Add(new InputSanitizerFilter()));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -74,6 +97,11 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 if (args.Contains("--init-users")) { await UserInitializer.RunAsync(app.Services, config); return; }
+app.UseForwardedHeaders();
+app.UseMiddleware<SecurityHeadersMiddleware>();
+if (!app.Environment.IsDevelopment())
+    app.UseHsts();
+app.UseHttpsRedirection();
 app.UseExceptionHandler();
 app.UseRouting();
 app.UseCors();
