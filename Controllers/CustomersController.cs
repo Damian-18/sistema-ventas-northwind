@@ -48,7 +48,8 @@ public class CustomersController(ContextoDB customers, UsuariosDB users) : Contr
     public async Task<ActionResult<CustomerDetailDto>> GetById(string id, CancellationToken ct)
     {
         if (!OwnsCustomer(id))
-            return Forbid();
+            return Problem("No puedes consultar el perfil de otro cliente.",
+                statusCode: StatusCodes.Status403Forbidden, title: "Acceso denegado");
 
         var customer = await customers.Customers.AsNoTracking()
             .Where(item => item.CustomerId == id)
@@ -57,25 +58,31 @@ public class CustomersController(ContextoDB customers, UsuariosDB users) : Contr
                 item.Address, item.City, item.Region, item.PostalCode, item.Country,
                 item.Phone, item.Fax, item.IsActive))
             .SingleOrDefaultAsync(ct);
-        return customer is null ? NotFound() : Ok(customer);
+        return customer is null
+            ? Problem("No se encontró el cliente solicitado.", statusCode: StatusCodes.Status404NotFound,
+                title: "Cliente no encontrado")
+            : Ok(customer);
     }
 
     [HttpPost, Authorize(Roles = AppRoles.Admin + "," + AppRoles.Empleado)]
     public async Task<ActionResult<CustomerDetailDto>> Create(CreateCustomerRequest request, CancellationToken ct)
     {
         if (await customers.Customers.AnyAsync(customer => customer.CompanyName == request.CompanyName, ct))
-            return Conflict(new { message = "Ya existe un cliente con ese nombre de empresa." });
+            return Problem("Ya existe un cliente con ese nombre de empresa.",
+                statusCode: StatusCodes.Status409Conflict, title: "Cliente duplicado");
 
         var customerId = request.CustomerId;
         if (customerId is null)
         {
             customerId = await GenerateCustomerId(ct);
             if (customerId is null)
-                return Conflict(new { message = "No se pudo asignar un identificador de cliente. Inténtalo de nuevo." });
+                return Problem("No se pudo asignar un identificador de cliente. Inténtalo de nuevo.",
+                    statusCode: StatusCodes.Status409Conflict, title: "No se pudo crear el cliente");
         }
         else if (await customers.Customers.AnyAsync(customer => customer.CustomerId == customerId, ct))
         {
-            return Conflict(new { message = "El identificador de cliente ya existe." });
+            return Problem("El identificador de cliente ya existe.",
+                statusCode: StatusCodes.Status409Conflict, title: "Identificador duplicado");
         }
 
         var customer = new Customer { CustomerId = customerId };
@@ -91,11 +98,13 @@ public class CustomersController(ContextoDB customers, UsuariosDB users) : Contr
     public async Task<IActionResult> Update(string id, UpdateCustomerRequest request, CancellationToken ct)
     {
         if (!OwnsCustomer(id))
-            return Forbid();
+            return Problem("No puedes modificar el perfil de otro cliente.",
+                statusCode: StatusCodes.Status403Forbidden, title: "Acceso denegado");
 
         var customer = await customers.Customers.FindAsync([id], ct);
         if (customer is null)
-            return NotFound();
+            return Problem("No se encontró el cliente solicitado.", statusCode: StatusCodes.Status404NotFound,
+                title: "Cliente no encontrado");
 
         request.Apply(customer);
         await customers.SaveChangesAsync(ct);
@@ -107,7 +116,8 @@ public class CustomersController(ContextoDB customers, UsuariosDB users) : Contr
     {
         var customer = await customers.Customers.FindAsync([id], ct);
         if (customer is null)
-            return NotFound();
+            return Problem("No se encontró el cliente solicitado.", statusCode: StatusCodes.Status404NotFound,
+                title: "Cliente no encontrado");
 
         await using var transaction = await customers.Database.BeginTransactionAsync(ct);
         await users.Database.UseTransactionAsync(transaction.GetDbTransaction(), ct);
@@ -131,7 +141,8 @@ public class CustomersController(ContextoDB customers, UsuariosDB users) : Contr
     {
         var customer = await customers.Customers.FindAsync([id], ct);
         if (customer is null)
-            return NotFound();
+            return Problem("No se encontró el cliente solicitado.", statusCode: StatusCodes.Status404NotFound,
+                title: "Cliente no encontrado");
 
         await using var transaction = await customers.Database.BeginTransactionAsync(ct);
         await users.Database.UseTransactionAsync(transaction.GetDbTransaction(), ct);

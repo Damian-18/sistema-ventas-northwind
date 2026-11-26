@@ -37,7 +37,9 @@ public class CategoriesController(ContextoDB db) : ControllerBase
     public async Task<IActionResult> Update(int id, CategoryInput input, CancellationToken ct)
     {
         var item = await db.Categories.FindAsync([id], ct);
-        if (item is null) return NotFound();
+        if (item is null)
+            return Problem("No se encontró la categoría solicitada.", statusCode: StatusCodes.Status404NotFound,
+                title: "Categoría no encontrada");
         var categoryName = input.CategoryName.Trim();
         if (await db.Categories.AnyAsync(category => category.CategoryId != id && category.CategoryName == categoryName, ct))
             return Problem("Ya existe una categoría con ese nombre.", statusCode: 409, title: "Categoría duplicada");
@@ -49,7 +51,9 @@ public class CategoriesController(ContextoDB db) : ControllerBase
     {
         var item = await db.Categories.FindAsync([id], ct);
         if (item is null) return NotFound();
-        if (await db.Products.AnyAsync(p => p.CategoryId == id, ct)) return Conflict(new { message = "La categoría tiene productos asociados." });
+        if (await db.Products.AnyAsync(p => p.CategoryId == id, ct))
+            return Problem("La categoría tiene productos asociados.", statusCode: StatusCodes.Status409Conflict,
+                title: "No se puede eliminar la categoría");
         db.Categories.Remove(item); await db.SaveChangesAsync(ct); return NoContent();
     }
 }

@@ -50,7 +50,8 @@ public class EmployeesController(
         var employee = await employees.Employees.AsNoTracking()
             .SingleOrDefaultAsync(item => item.EmployeeId == id, ct);
         if (employee is null)
-            return NotFound();
+            return Problem("No se encontró el empleado solicitado.", statusCode: StatusCodes.Status404NotFound,
+                title: "Empleado no encontrado");
 
         var user = await users.Users.AsNoTracking()
             .SingleOrDefaultAsync(item => item.EmployeeId == id, ct);
@@ -64,16 +65,19 @@ public class EmployeesController(
     public async Task<ActionResult<EmployeeDetailDto>> Create(CreateEmployeeRequest request, CancellationToken ct)
     {
         if (request.Role is not (AppRoles.Admin or AppRoles.Empleado))
-            return BadRequest(new { message = "El rol de la cuenta debe ser Admin o Empleado." });
+            return Problem("El rol de la cuenta debe ser Admin o Empleado.",
+                statusCode: StatusCodes.Status400BadRequest, title: "Rol inválido");
 
         var normalizedUsername = request.Username.ToUpperInvariant();
         if (await users.Users.AnyAsync(user => user.NormalizedUsername == normalizedUsername, ct))
-            return Conflict(new { message = "El nombre de usuario ya existe." });
+            return Problem("El nombre de usuario ya existe.", statusCode: StatusCodes.Status409Conflict,
+                title: "Usuario duplicado");
         if (await employees.Employees.AnyAsync(employee =>
                 employee.FirstName == request.FirstName &&
                 employee.LastName == request.LastName &&
                 employee.BirthDate == request.BirthDate, ct))
-            return Conflict(new { message = "Ya existe un empleado con esos nombres y fecha de nacimiento." });
+            return Problem("Ya existe un empleado con esos nombres y fecha de nacimiento.",
+                statusCode: StatusCodes.Status409Conflict, title: "Empleado duplicado");
 
         var employee = new Employee();
         request.Apply(employee);
@@ -103,7 +107,8 @@ public class EmployeesController(
     {
         var employee = await employees.Employees.FindAsync([id], ct);
         if (employee is null)
-            return NotFound();
+            return Problem("No se encontró el empleado solicitado.", statusCode: StatusCodes.Status404NotFound,
+                title: "Empleado no encontrado");
 
         request.Apply(employee);
         await employees.SaveChangesAsync(ct);
@@ -115,7 +120,8 @@ public class EmployeesController(
     {
         var employee = await employees.Employees.FindAsync([id], ct);
         if (employee is null)
-            return NotFound();
+            return Problem("No se encontró el empleado solicitado.", statusCode: StatusCodes.Status404NotFound,
+                title: "Empleado no encontrado");
 
         await using var transaction = await employees.Database.BeginTransactionAsync(ct);
         await users.Database.UseTransactionAsync(transaction.GetDbTransaction(), ct);

@@ -29,7 +29,8 @@ public class OrdersController(ContextoDB db, OrderService orderService) : Contro
         {
             var ownerId = User.FindFirst("customer_id")?.Value;
             if (string.IsNullOrWhiteSpace(ownerId))
-                return Forbid();
+                return Problem("La sesión de cliente no tiene un vínculo válido.",
+                    statusCode: StatusCodes.Status403Forbidden, title: "Acceso denegado");
             query = query.Where(order => order.CustomerId == ownerId);
         }
         else if (!string.IsNullOrWhiteSpace(customerId))
@@ -63,14 +64,16 @@ public class OrdersController(ContextoDB db, OrderService orderService) : Contro
             .ThenInclude(detail => detail.Product)
             .SingleOrDefaultAsync(item => item.OrderId == id, ct);
         if (order is null)
-            return NotFound();
+            return Problem("No se encontró la venta solicitada.", statusCode: StatusCodes.Status404NotFound,
+                title: "Venta no encontrada");
 
         if (User.IsInRole(AppRoles.Cliente))
         {
             var ownerId = User.FindFirst("customer_id")?.Value;
             if (string.IsNullOrWhiteSpace(ownerId) ||
                 !string.Equals(ownerId, order.CustomerId, StringComparison.Ordinal))
-                return Forbid();
+                return Problem("No puedes consultar la venta de otro cliente.",
+                    statusCode: StatusCodes.Status403Forbidden, title: "Acceso denegado");
         }
 
         return Ok(OrderService.ToView(order));
@@ -84,15 +87,18 @@ public class OrdersController(ContextoDB db, OrderService orderService) : Contro
             ? User.FindFirst("customer_id")?.Value
             : request.CustomerId;
         if (string.IsNullOrWhiteSpace(customerId))
-            return Problem("Debes indicar un cliente para la venta.", statusCode: 400, title: "Cliente requerido");
+            return Problem("Debes indicar un cliente para la venta.", statusCode: StatusCodes.Status400BadRequest,
+                title: "Cliente requerido");
         if (!isCustomer && request.CustomerId is null)
-            return Problem("Debes indicar un cliente para la venta.", statusCode: 400, title: "Cliente requerido");
+            return Problem("Debes indicar un cliente para la venta.", statusCode: StatusCodes.Status400BadRequest,
+                title: "Cliente requerido");
 
         int? employeeId = null;
         if (!isCustomer && User.FindFirst("employee_id") is { } employeeClaim)
         {
             if (!int.TryParse(employeeClaim.Value, out var parsedEmployeeId))
-                return Forbid();
+                return Problem("La sesión no tiene un vínculo válido con un empleado.",
+                    statusCode: StatusCodes.Status403Forbidden, title: "Acceso denegado");
             employeeId = parsedEmployeeId;
         }
 

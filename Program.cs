@@ -113,6 +113,30 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 app.UseHttpsRedirection();
 app.UseExceptionHandler();
+app.UseStatusCodePages(async statusContext =>
+{
+    var response = statusContext.HttpContext.Response;
+    var (title, detail) = response.StatusCode switch
+    {
+        StatusCodes.Status401Unauthorized =>
+            ("No autenticado", "Las credenciales no son válidas o la sesión ya no está vigente."),
+        StatusCodes.Status403Forbidden =>
+            ("Acceso denegado", "No tienes permiso para realizar esta operación o consultar este recurso."),
+        StatusCodes.Status404NotFound =>
+            ("Recurso no encontrado", "No se encontró el recurso solicitado."),
+        StatusCodes.Status429TooManyRequests =>
+            ("Demasiadas solicitudes", "Se alcanzó el límite de solicitudes. Inténtalo más tarde."),
+        _ => ("Solicitud no completada", "No fue posible completar la solicitud.")
+    };
+    response.ContentType = "application/problem+json";
+    await response.WriteAsJsonAsync(new Microsoft.AspNetCore.Mvc.ProblemDetails
+    {
+        Status = response.StatusCode,
+        Title = title,
+        Detail = detail,
+        Instance = statusContext.HttpContext.Request.Path
+    }, statusContext.HttpContext.RequestAborted);
+});
 app.UseRouting();
 app.UseCors();
 app.UseRateLimiter();

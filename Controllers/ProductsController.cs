@@ -75,7 +75,8 @@ public class ProductsController(ContextoDB db) : ControllerBase
     [HttpPost, Authorize(Policy = "WriteCatalog")]
     public async Task<ActionResult<ProductView>> Create(ProductInput input, CancellationToken ct)
     {
-        if (await ValidateReferences(input, ct) is { } error) return BadRequest(new { message = error });
+        if (await ValidateReferences(input, ct) is { } error)
+            return Problem(error, statusCode: StatusCodes.Status400BadRequest, title: "Referencia inválida");
         var productName = input.ProductName.Trim();
         if (await db.Products.AnyAsync(product => product.ProductName == productName, ct))
             return Problem("Ya existe un producto con ese nombre.", statusCode: 409, title: "Producto duplicado");
@@ -88,8 +89,11 @@ public class ProductsController(ContextoDB db) : ControllerBase
     public async Task<IActionResult> Update(int id, ProductInput input, CancellationToken ct)
     {
         var item = await db.Products.FindAsync([id], ct);
-        if (item is null) return NotFound();
-        if (await ValidateReferences(input, ct) is { } error) return BadRequest(new { message = error });
+        if (item is null)
+            return Problem("No se encontró el producto solicitado.", statusCode: StatusCodes.Status404NotFound,
+                title: "Producto no encontrado");
+        if (await ValidateReferences(input, ct) is { } error)
+            return Problem(error, statusCode: StatusCodes.Status400BadRequest, title: "Referencia inválida");
         var productName = input.ProductName.Trim();
         if (await db.Products.AnyAsync(product => product.ProductId != id && product.ProductName == productName, ct))
             return Problem("Ya existe un producto con ese nombre.", statusCode: 409, title: "Producto duplicado");
@@ -100,7 +104,9 @@ public class ProductsController(ContextoDB db) : ControllerBase
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
         var item = await db.Products.FindAsync([id], ct);
-        if (item is null) return NotFound();
+        if (item is null)
+            return Problem("No se encontró el producto solicitado.", statusCode: StatusCodes.Status404NotFound,
+                title: "Producto no encontrado");
         item.Discontinued = 1;
         await db.SaveChangesAsync(ct);
         return NoContent();

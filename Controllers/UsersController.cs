@@ -31,10 +31,13 @@ public class UsersController(UsuariosDB db, IPasswordHasher<ApiUser> hasher) : C
     public async Task<ActionResult<UserView>> Create(CreateUserRequest request, CancellationToken ct)
     {
         if (!AppRoles.IsValid(request.Role))
-            return BadRequest(new { message = "El rol debe ser Admin, Empleado o Cliente." });
+            return Problem("El rol debe ser Admin, Empleado o Cliente.", statusCode: StatusCodes.Status400BadRequest,
+                title: "Rol inválido");
 
         var normalized = request.Username.ToUpperInvariant();
-        if (await db.Users.AnyAsync(u => u.NormalizedUsername == normalized, ct)) return Conflict(new { message = "El nombre de usuario ya existe." });
+        if (await db.Users.AnyAsync(u => u.NormalizedUsername == normalized, ct))
+            return Problem("El nombre de usuario ya existe.", statusCode: StatusCodes.Status409Conflict,
+                title: "Usuario duplicado");
         var user = new ApiUser { Username = request.Username, NormalizedUsername = normalized, Role = request.Role };
         user.PasswordHash = hasher.HashPassword(user, request.Password);
         db.Users.Add(user); await db.SaveChangesAsync(ct);
@@ -45,13 +48,18 @@ public class UsersController(UsuariosDB db, IPasswordHasher<ApiUser> hasher) : C
     public async Task<IActionResult> Update(int id, UpdateUserRequest request, CancellationToken ct)
     {
         var user = await db.Users.FindAsync([id], ct);
-        if (user is null) return NotFound();
+        if (user is null) return Problem("No se encontró el usuario solicitado.", statusCode: StatusCodes.Status404NotFound,
+            title: "Usuario no encontrado");
         if (!AppRoles.IsValid(request.Role))
-            return BadRequest(new { message = "El rol debe ser Admin, Empleado o Cliente." });
+            return Problem("El rol debe ser Admin, Empleado o Cliente.", statusCode: StatusCodes.Status400BadRequest,
+                title: "Rol inválido");
         if (id == CurrentId && (request.Role != AppRoles.Admin || request.IsActive != true))
-            return Conflict(new { message = "No puedes quitarte el rol Admin ni desactivar tu propia cuenta." });
+            return Problem("No puedes quitarte el rol Admin ni desactivar tu propia cuenta.",
+                statusCode: StatusCodes.Status409Conflict, title: "Operación no permitida");
         var normalized = request.Username.ToUpperInvariant();
-        if (await db.Users.AnyAsync(u => u.Id != id && u.NormalizedUsername == normalized, ct)) return Conflict(new { message = "El nombre de usuario ya existe." });
+        if (await db.Users.AnyAsync(u => u.Id != id && u.NormalizedUsername == normalized, ct))
+            return Problem("El nombre de usuario ya existe.", statusCode: StatusCodes.Status409Conflict,
+                title: "Usuario duplicado");
         user.Username = request.Username; user.NormalizedUsername = normalized;
         user.Role = request.Role; user.IsActive = request.IsActive!.Value;
         user.SecurityStamp = Guid.NewGuid().ToString("N");
@@ -61,9 +69,12 @@ public class UsersController(UsuariosDB db, IPasswordHasher<ApiUser> hasher) : C
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Deactivate(int id, CancellationToken ct)
     {
-        if (id == CurrentId) return Conflict(new { message = "No puedes desactivar tu propia cuenta." });
+        if (id == CurrentId)
+            return Problem("No puedes desactivar tu propia cuenta.", statusCode: StatusCodes.Status409Conflict,
+                title: "Operación no permitida");
         var user = await db.Users.FindAsync([id], ct);
-        if (user is null) return NotFound();
+        if (user is null) return Problem("No se encontró el usuario solicitado.", statusCode: StatusCodes.Status404NotFound,
+            title: "Usuario no encontrado");
         user.IsActive = false; user.SecurityStamp = Guid.NewGuid().ToString("N");
         await db.SaveChangesAsync(ct); return NoContent();
     }
@@ -72,7 +83,8 @@ public class UsersController(UsuariosDB db, IPasswordHasher<ApiUser> hasher) : C
     public async Task<IActionResult> ResetPassword(int id, ResetPasswordRequest request, CancellationToken ct)
     {
         var user = await db.Users.FindAsync([id], ct);
-        if (user is null) return NotFound();
+        if (user is null) return Problem("No se encontró el usuario solicitado.", statusCode: StatusCodes.Status404NotFound,
+            title: "Usuario no encontrado");
         user.PasswordHash = hasher.HashPassword(user, request.NewPassword);
         user.SecurityStamp = Guid.NewGuid().ToString("N");
         await db.SaveChangesAsync(ct); return NoContent();
@@ -82,7 +94,8 @@ public class UsersController(UsuariosDB db, IPasswordHasher<ApiUser> hasher) : C
     public async Task<IActionResult> Unlock(int id, CancellationToken ct)
     {
         var user = await db.Users.FindAsync([id], ct);
-        if (user is null) return NotFound();
+        if (user is null) return Problem("No se encontró el usuario solicitado.", statusCode: StatusCodes.Status404NotFound,
+            title: "Usuario no encontrado");
         user.FailedLoginAttempts = 0;
         user.LockoutEnd = null;
         await db.SaveChangesAsync(ct);

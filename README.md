@@ -17,10 +17,10 @@ En producción, configura los mismos valores como variables de entorno: `Connect
 
 ## Qué cambió
 
-- La API está orientada al cliente web Northwind y gestiona su propio catálogo y autenticación.
-- Productos, categorías y proveedores tienen listado, consulta por ID, creación, actualización y eliminación.
-- Se conserva GET /api/clientes, solo de consulta.
-- Los usuarios ahora se guardan en la tabla `api_users` de la misma base configurada. Los modelos y el contexto de Northwind se conservan.
+- La API administra autenticación, clientes, empleados, ventas y catálogo Northwind.
+- Los usuarios se guardan en `api_users`; las entidades de negocio conservan el esquema Northwind.
+- Los roles vigentes son `Admin`, `Empleado` y `Cliente`.
+- Los clientes pueden registrarse y consultar productos activos, paqueterías, su perfil y sus propias ventas.
 - El contexto `UsuariosDB` está separado para evitar que un scaffolding de Northwind reemplace la configuración de autenticación.
 - Si vuelves a generar el scaffold, selecciona explícitamente las tablas originales de Northwind con `--table` y excluye `api_users`. No ejecutes el antiguo scaffold global con `--force` sobre Models: podría sobrescribir la clase ApiUser propia de la API.
 - JWT usa una clave aleatoria nueva de esta instalación. Los tokens antiguos y el antiguo login DemoUser dejaron de ser válidos.
@@ -37,7 +37,7 @@ El usuario y la contraseña inicial están en el archivo privado `ADMINISTRADOR_
 3. En http://localhost:5055/swagger, haz POST /api/auth/login con el administrador.
 4. Pega accessToken en Authorize (solo el token).
 5. Cambia tu contraseña con PUT /api/auth/password. Esto revoca el token actual; vuelve a iniciar sesión.
-6. Crea una cuenta para el Equipo 2 con POST /api/usuarios. Usa rol Editor si su frontend debe realizar CRUD, o Lector si solo consultará.
+6. Crea las cuentas administrativas necesarias con `POST /api/usuarios` (`Admin`, `Empleado` o `Cliente`) o un empleado vinculado con `POST /api/empleados`.
 
 Ejemplo de creación (sustituye la contraseña de ejemplo por una nueva):
 
@@ -45,55 +45,87 @@ Ejemplo de creación (sustituye la contraseña de ejemplo por una nueva):
 {
   "username": "equipo2",
   "password": "ElegirUnaClaveNueva!2026",
-  "role": "Editor"
+  "role": "Empleado"
 }
 ```
 
-No hay registro público: solo Admin crea usuarios. Los nombres tienen de 3 a 50 caracteres ASCII, con letras, números, punto, guion o guion bajo. Son únicos sin distinguir mayúsculas. Las contraseñas nuevas tienen entre 12 y 128 caracteres; se guardan con PasswordHasher de ASP.NET Core, con salt y hash, nunca en texto plano.
+También existe `POST /api/auth/register` para que un cliente cree su cuenta y registro Northwind vinculados. Los nombres de usuario tienen de 3 a 50 caracteres ASCII, con letras, números, punto, guion o guion bajo, y son únicos sin distinguir mayúsculas. Las contraseñas se guardan con `PasswordHasher` de ASP.NET Core, nunca en texto plano.
 
 ## Roles
 
-| Función | Lector | Editor | Admin |
-|---|---|---|---|
-| Consultar catálogos y clientes | Sí | Sí | Sí |
-| Crear, actualizar y borrar catálogos | No | Sí | Sí |
-| Ver su perfil, cambiar su contraseña y cerrar sesión | Sí | Sí | Sí |
-| Listar, crear y administrar usuarios | No | No | Sí |
+| Función | Admin | Empleado | Cliente |
+|---|---:|---:|---:|
+| Administrar usuarios, empleados, desbloqueos y reactivar clientes | Sí | No | No |
+| Escribir productos, categorías y proveedores | Sí | Sí | No |
+| Consultar clientes y administrar clientes | Sí | Sí | Solo su perfil |
+| Crear y consultar ventas | Todas | Todas | Solo las propias |
+| Consultar catálogo activo y paqueterías | Sí | Sí | Sí |
 
-Se valida la firma y vigencia del JWT, y en cada petición protegida se verifica en MySQL que el usuario siga activo y que su versión de sesión y rol coincidan. Cambiar un usuario, su contraseña o su rol, desactivarlo o cerrar sesión invalida sus tokens anteriores. Logout cierra todas las sesiones de esa cuenta. No hay refresh token.
+Se valida la firma y vigencia del JWT, y en cada petición protegida se verifica en MySQL que el usuario siga activo y que su versión de sesión y rol coincidan. Cambiar un usuario, su contraseña o su rol, desactivarlo o cerrar sesión invalida sus tokens anteriores. Logout cierra todas las sesiones de esa cuenta. El inicio de sesión bloquea la cuenta tras 3 intentos fallidos consecutivos (15 minutos por defecto); un Admin puede desbloquearla. No hay refresh token.
 
-El login y el cambio de contraseña tienen un límite compartido de 10 solicitudes por minuto por IP, en memoria por proceso. Al excederlo devuelve 429; espera un minuto. Es protección básica para esta práctica, no un sistema distribuido de prevención de abuso.
+Login, registro y cambio de contraseña comparten un límite de 10 solicitudes por minuto por IP, en memoria por proceso. Al excederlo devuelve 429; espera un minuto. Es protección básica para esta práctica, no un sistema distribuido de prevención de abuso.
 
 ## Endpoints
 
-Para cada base `/api/productos`, `/api/categorias`, `/api/proveedores`:
+Todas las rutas salvo registro y login requieren JWT. `WriteCatalog` permite escritura a `Admin` y `Empleado`. Los parámetros de paginación de listados son `limit` (1–100) y `offset` (>= 0), salvo productos paginados, que usa `p` y `pageSize`.
 
-| Método y ruta | Acción | Respuesta correcta |
+| Método y ruta | Acceso | Función / respuesta correcta |
 |---|---|---|
-| GET base?limit=20&offset=0 | Listar | 200 con arreglo |
-| GET base/{id} | Consultar | 200 con objeto |
-| POST base | Crear | 201 con objeto y Location |
-| PUT base/{id} | Reemplazar campos editables | 204 sin cuerpo |
-| DELETE base/{id} | Eliminar | 204 sin cuerpo |
+| `POST /api/auth/register` | Anónimo | Registro de cliente vinculado; `201` |
+| `POST /api/auth/login` | Anónimo | Login; `200` con JWT |
+| `GET /api/auth/me` | Autenticado | Perfil del usuario actual; `200` |
+| `PUT /api/auth/password` | Autenticado | Cambiar contraseña propia; `204` |
+| `POST /api/auth/logout` | Autenticado | Revocar sesiones propias; `204` |
+| `GET /api/usuarios[?limit&offset]`, `GET /api/usuarios/{id}` | Admin | Consultar cuentas; `200` |
+| `POST /api/usuarios`, `PUT /api/usuarios/{id}` | Admin | Crear/actualizar cuenta; `201` / `204` |
+| `DELETE /api/usuarios/{id}` | Admin | Desactivar cuenta; `204` |
+| `PUT /api/usuarios/{id}/password` | Admin | Restablecer contraseña; `204` |
+| `PUT /api/usuarios/{id}/desbloquear` | Admin | Limpiar bloqueo; `204` |
+| `GET /api/empleados[?limit&offset&includeInactive]`, `GET /api/empleados/{id}` | Admin | Consultar empleados y estado de cuenta; `200` |
+| `POST /api/empleados`, `PUT /api/empleados/{id}` | Admin | Alta transaccional con cuenta / actualizar; `201` / `204` |
+| `DELETE /api/empleados/{id}` | Admin | Baja lógica y revocación; `204` |
+| `GET /api/clientes[?limit&offset&includeInactive&search]` | Admin, Empleado | Listar clientes; `200` |
+| `GET /api/clientes/{id}` | Admin, Empleado, propietario Cliente | Detalle; `200` |
+| `POST /api/clientes`, `PUT /api/clientes/{id}` | Admin, Empleado; Cliente propio para PUT | Crear/actualizar contacto; `201` / `204` |
+| `DELETE /api/clientes/{id}` | Admin, Empleado | Baja lógica y revocación; `204` |
+| `PUT /api/clientes/{id}/reactivar` | Admin | Reactivar cliente y cuenta vinculada; `204` |
+| `GET /api/ventas[?limit&offset&customerId&from&to]`, `GET /api/ventas/{id}` | Autenticado | Admin/Empleado ven todas; Cliente solo las propias; `200` |
+| `POST /api/ventas` | Admin, Empleado, Cliente | Crear venta con precios/stock del servidor; `201` |
+| `GET /api/productos`, `GET /api/productos/paginados`, `GET /api/productos/{id}` | Autenticado | Consultar catálogo; Cliente solo ve productos activos; `200` |
+| `POST /api/productos`, `PUT /api/productos/{id}`, `DELETE /api/productos/{id}` | Admin, Empleado | Crear/actualizar/marcar descontinuado; `201` / `204` |
+| `GET /api/categorias`, `GET /api/categorias/{id}`, `GET /api/proveedores`, `GET /api/proveedores/{id}` | Autenticado | Consultar catálogo; `200` |
+| `POST`, `PUT /{id}`, `DELETE /{id}` en `/api/categorias` y `/api/proveedores` | Admin, Empleado | Escribir catálogo; `201` / `204` |
+| `GET /api/shippers` | Autenticado | Lista ligera de paqueterías; `200` |
 
-Todos requieren JWT. POST, PUT y DELETE requieren Editor o Admin. Los ID son generados por la base. En PUT se envía el formulario completo: campos opcionales omitidos se restablecen a null o al valor predeterminado, no se conservan como en PATCH.
+`DELETE` de clientes y empleados es baja lógica; en usuarios se desactiva la cuenta y se revoca su token. `DELETE /api/productos/{id}` marca el producto como discontinuado. Categorías y proveedores relacionados con productos no se pueden eliminar. No existe endpoint de borrado de ventas. En una venta, `CustomerId` de un Cliente se obtiene del JWT; no se aceptan precios ni descuentos aportados por el cliente y el stock se descuenta en transacción.
 
-No se borran productos que tengan detalles de pedidos; puedes marcarlos discontinued. No se borran categorías ni proveedores con productos. Se devuelve 409 y no se ejecutan borrados en cascada desde la API. Referencias a categorías/proveedores inexistentes se rechazan con 400.
+### Errores HTTP
 
-| Método y ruta | Función |
+Las respuestas de error usan `ProblemDetails` RFC 7807 (incluidos errores de autorización, ruta inexistente y límite de solicitudes); las validaciones de modelo usan `ValidationProblemDetails`.
+
+| Código | Uso principal |
 |---|---|
-| POST /api/auth/login | Login público |
-| GET /api/auth/me | Perfil del usuario autenticado |
-| PUT /api/auth/password | Cambiar contraseña propia: currentPassword, newPassword |
-| POST /api/auth/logout | Revocar todas las sesiones propias |
-| GET /api/usuarios | Listar usuarios, solo Admin |
-| GET /api/usuarios/{id} | Consultar usuario, solo Admin |
-| POST /api/usuarios | Crear usuario, solo Admin |
-| PUT /api/usuarios/{id} | Cambiar username, role, isActive, solo Admin |
-| DELETE /api/usuarios/{id} | Desactivar usuario, solo Admin |
-| PUT /api/usuarios/{id}/password | Restablecer contraseña: newPassword, solo Admin |
+| `400` | Datos inválidos, cantidades/ítems no válidos, texto no permitido |
+| `401` | Credenciales incorrectas o token faltante, expirado o revocado |
+| `403` | Rol insuficiente o intento IDOR de un Cliente |
+| `404` | Recurso inexistente |
+| `409` | Duplicado, cliente inactivo, producto descontinuado o stock insuficiente |
+| `423` | Cuenta bloqueada por intentos fallidos |
+| `429` | Rate limit excedido |
+| `503` | Base de datos no disponible |
 
-DELETE de usuario es baja lógica; conserva la fila y reserva el nombre de usuario. Un Admin no puede desactivar su propia cuenta ni quitarse su propio rol. Puede reactivar otras cuentas con PUT. Las respuestas nunca incluyen hashes ni SecurityStamp. Los cambios simultáneos sobre usuarios se detectan mediante un token de concurrencia y devuelven 409.
+### Pruebas manuales locales pendientes
+
+Ejecuta el script `Database/002_seguridad_y_baja_logica.sql` sobre `nwind`, configura User Secrets y `Cors:AllowedOrigins` siguiendo la sección de configuración, y ejecuta la API. En Development, Swagger está en `/swagger`.
+
+1. Registra dos clientes; confirma `201`, identificadores de 5 caracteres y `409` para usuario duplicado. Inicia sesión como cada uno.
+2. Prueba tres contraseñas incorrectas: `401` las primeras, `423` al umbral y mientras dure el bloqueo. Como Admin consulta el contador, usa `PUT /api/usuarios/{id}/desbloquear` y comprueba login y reinicio del contador.
+3. Prueba rutas de Admin, Empleado y Cliente: solo Admin administra usuarios/empleados; Admin y Empleado escriben catálogo; las demás rutas respetan la tabla de roles. Comprueba además `401` sin token y `403` con rol insuficiente.
+4. Como Cliente A solicita y actualiza su propio perfil y registra una venta indicando también el ID del Cliente B en el cuerpo: debe quedar vinculada a A. Solicita el perfil y las ventas de B; espera `403`.
+5. Prueba ventas con lista vacía, cantidades no positivas, productos repetidos, producto inexistente, discontinuado, sin stock, con precio/stock nulo, paquetería inexistente y cliente inactivo. Confirma los códigos `400`/`404`/`409` esperados y que stock/órdenes no cambian al fallar.
+6. Prueba baja lógica y reactivación de clientes/empleados, incluyendo que su token anterior quede revocado; confirma que el cliente inactivo no pueda comprar.
+7. Prueba duplicados de producto/categoría/proveedor, baja lógica de producto e intento de eliminar categoría/proveedor relacionado (`409`).
+8. Comprueba sanitización (texto con etiquetas/script, atributos `onerror` y `javascript:`), cabeceras de seguridad, rechazo de origen CORS no configurado y `429` con más de 10 peticiones por minuto. La comprobación de `X-Forwarded-*` requiere probar detrás de un proxy confiable configurado.
 
 ## Estructura
 
@@ -108,9 +140,12 @@ Services/
   TokenService.cs          Emite JWT
 Infrastructure/
   UserInitializer.cs       Inicialización explícita del primer Admin
-  ApiExceptionHandler.cs   Respuestas de errores sin detalles internos
+  ApiExceptionHandler.cs   Respuestas ProblemDetails sin detalles internos
 Database/
   001_api_users.sql        Creación aditiva de la tabla de usuarios
+  002_seguridad_y_baja_logica.sql  Bloqueo, vínculos e indicadores de baja lógica
+Services/
+  OrderService.cs          Validación transaccional de ventas e inventario
 Program.cs     Configura EF, JWT, roles, CORS, límite de peticiones y Swagger
 web.config     IIS, deshabilita WebDAV para permitir PUT y DELETE
 ```
@@ -149,6 +184,6 @@ La API aplica redirección HTTPS, HSTS fuera de Development, cabeceras de seguri
 
 Consulta VERIFICACION.md para los resultados. Las pruebas de catálogo crean y eliminan sus propias filas. Quedaron dos cuentas de prueba desactivadas, con prefijos test_reader_ y test_editor_. Los identificadores autoincrementales consumidos no se reutilizan.
 
-La API no incluye frontend, refresh tokens, recuperación por correo, auditoría completa ni gestión de pedidos. Los PUT de catálogo usan el último cambio recibido; no incluyen control de versiones de inventario para uso concurrente intensivo. La administración de usuarios es intencionalmente pequeña y utiliza PasswordHasher, DTO y permisos explícitos.
+La API no incluye frontend, refresh tokens, recuperación por correo ni auditoría completa. Las ventas controlan concurrencia de inventario mediante transacción serializable; los PUT de catálogo no incluyen control de versiones para uso concurrente intensivo. La administración de usuarios es intencionalmente pequeña y utiliza PasswordHasher, DTO y permisos explícitos.
 
 Referencias de implementación: [PasswordHasher de ASP.NET Core](https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.identity.passwordhasher-1.verifyhashedpassword?view=aspnetcore-10.0), [limitación de peticiones](https://learn.microsoft.com/en-us/aspnet/core/performance/rate-limit?view=aspnetcore-10.0).

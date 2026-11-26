@@ -35,7 +35,8 @@ public class AuthController(
 
         var result = hasher.VerifyHashedPassword(user ?? new ApiUser(), user?.PasswordHash ?? DummyHash, request.Password);
         if (user is null || !user.IsActive)
-            return Unauthorized(new { message = "Usuario o contraseña incorrectos." });
+            return Problem("Usuario o contraseña incorrectos.", statusCode: StatusCodes.Status401Unauthorized,
+                title: "Credenciales incorrectas");
 
         if (result == PasswordVerificationResult.Failed)
         {
@@ -50,7 +51,8 @@ public class AuthController(
             }
 
             await db.SaveChangesAsync(ct);
-            return Unauthorized(new { message = "Usuario o contraseña incorrectos." });
+            return Problem("Usuario o contraseña incorrectos.", statusCode: StatusCodes.Status401Unauthorized,
+                title: "Credenciales incorrectas");
         }
 
         user.FailedLoginAttempts = 0;
@@ -66,7 +68,8 @@ public class AuthController(
     {
         var normalized = request.Username.Trim().ToUpperInvariant();
         if (await db.Users.AnyAsync(u => u.NormalizedUsername == normalized, ct))
-            return Conflict(new { message = "El nombre de usuario ya existe." });
+            return Problem("El nombre de usuario ya existe.", statusCode: StatusCodes.Status409Conflict,
+                title: "Usuario duplicado");
 
         var customerId = "";
         for (var attempt = 0; attempt < 10; attempt++)
@@ -80,7 +83,8 @@ public class AuthController(
         }
 
         if (customerId.Length == 0)
-            return Conflict(new { message = "No se pudo asignar un identificador de cliente. Inténtalo de nuevo." });
+            return Problem("No se pudo asignar un identificador de cliente. Inténtalo de nuevo.",
+                statusCode: StatusCodes.Status409Conflict, title: "No se pudo registrar el cliente");
 
         var customer = new Customer
         {
@@ -123,7 +127,8 @@ public class AuthController(
     {
         var user = await Current(ct);
         if (hasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword) == PasswordVerificationResult.Failed)
-            return BadRequest(new { message = "La contraseña actual es incorrecta." });
+            return Problem("La contraseña actual es incorrecta.", statusCode: StatusCodes.Status400BadRequest,
+                title: "Contraseña actual incorrecta");
         user.PasswordHash = hasher.HashPassword(user, request.NewPassword);
         user.SecurityStamp = Guid.NewGuid().ToString("N");
         await db.SaveChangesAsync(ct);
@@ -142,8 +147,9 @@ public class AuthController(
     {
         var minutesRemaining = Math.Max(1, (int)Math.Ceiling((lockoutEnd - now).TotalMinutes));
         var unit = minutesRemaining == 1 ? "minuto" : "minutos";
-        return StatusCode(StatusCodes.Status423Locked,
-            new { message = $"La cuenta está bloqueada. Inténtalo de nuevo en aproximadamente {minutesRemaining} {unit}." });
+        return Problem(
+            $"La cuenta está bloqueada. Inténtalo de nuevo en aproximadamente {minutesRemaining} {unit}.",
+            statusCode: StatusCodes.Status423Locked, title: "Cuenta bloqueada");
     }
 
     private static string GenerateCustomerId()

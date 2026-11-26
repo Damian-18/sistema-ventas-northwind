@@ -38,7 +38,9 @@ public class SuppliersController(ContextoDB db) : ControllerBase
     public async Task<IActionResult> Update(int id, SupplierInput input, CancellationToken ct)
     {
         var item = await db.Suppliers.FindAsync([id], ct);
-        if (item is null) return NotFound();
+        if (item is null)
+            return Problem("No se encontró el proveedor solicitado.", statusCode: StatusCodes.Status404NotFound,
+                title: "Proveedor no encontrado");
         var companyName = input.CompanyName.Trim();
         if (await db.Suppliers.AnyAsync(supplier => supplier.SupplierId != id && supplier.CompanyName == companyName, ct))
             return Problem("Ya existe un proveedor con ese nombre de empresa.", statusCode: 409, title: "Proveedor duplicado");
@@ -50,7 +52,9 @@ public class SuppliersController(ContextoDB db) : ControllerBase
     {
         var item = await db.Suppliers.FindAsync([id], ct);
         if (item is null) return NotFound();
-        if (await db.Products.AnyAsync(p => p.SupplierId == id, ct)) return Conflict(new { message = "El proveedor tiene productos asociados." });
+        if (await db.Products.AnyAsync(p => p.SupplierId == id, ct))
+            return Problem("El proveedor tiene productos asociados.", statusCode: StatusCodes.Status409Conflict,
+                title: "No se puede eliminar el proveedor");
         db.Suppliers.Remove(item); await db.SaveChangesAsync(ct); return NoContent();
     }
 }
