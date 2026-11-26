@@ -41,10 +41,10 @@
   * Agregar `PUT /api/usuarios/{id}/desbloquear` (solo `Admin`).
 
 ## Fase 4: Gestión de Empleados y Clientes (Baja Lógica)
-* [ ] Crear DTOs de empleados (`Contracts/EmployeeContracts.cs`) sin exponer datos binarios ni contraseñas.
-* [ ] Crear `EmployeesController.cs` (solo `Admin`): `GET`, `GET /{id}`, `POST` (transaccional `Employee` + `ApiUser`), `PUT /{id}`, `DELETE /{id}` (baja lógica en ambas tablas + rotación de `SecurityStamp`).
-* [ ] Completar DTOs de clientes (`Contracts/CustomerContracts.cs`).
-* [ ] Completar `CustomersController.cs`:
+* [x] Crear DTOs de empleados (`Contracts/EmployeeContracts.cs`) sin exponer datos binarios ni contraseñas.
+* [x] Crear `EmployeesController.cs` (solo `Admin`): `GET`, `GET /{id}`, `POST` (transaccional `Employee` + `ApiUser`), `PUT /{id}`, `DELETE /{id}` (baja lógica en ambas tablas + rotación de `SecurityStamp`).
+* [x] Completar DTOs de clientes (`Contracts/CustomerContracts.cs`).
+* [x] Completar `CustomersController.cs`:
   * `GET` con filtro de activos/inactivos (`Admin`/`Empleado`).
   * `GET /{id}` con validación de ownership para `Cliente`.
   * `POST` con validación de duplicados (`Admin`/`Empleado`).
@@ -89,3 +89,4 @@
 | 2026-11-24 | Fase 1 | Completa | Creado `Database/002_seguridad_y_baja_logica.sql` con alteraciones e índices condicionales; actualizados `ApiUser`, `Customer`, `Employee`, ambos DbContext, nueva clase `AppRoles`, política `WriteCatalog` y este archivo. El usuario confirmó la ejecución del script sobre `nwind` y el commit. `dotnet build` correcto (0 advertencias, 0 errores). |
 | 2026-11-24 | Fase 2 | Completa | Configurados `ForwardedHeaders`, CORS limitado, HTTPS/HSTS y cabeceras globales; añadido filtro de sanitización global y revisado `ApiExceptionHandler`. Modificados `Program.cs`, `appsettings.json`, `ApiExceptionHandler.cs`, `README.md` y este archivo; creados `SecurityHeadersMiddleware.cs` e `InputSanitizer.cs`. `dotnet build` correcto (0 advertencias, 0 errores); comprobaciones HTTP locales confirmaron redirección HTTPS, cabeceras, CORS/HSTS detrás de proxy y rechazo XSS. Configurar `Cors:AllowedOrigins` y las IPs de proxy confiables antes del despliegue. |
 | 2026-11-24 | Fase 3 | Completa | Actualizados `Program.cs` (conexión MySQL scoped compartida y validación de configuración), `AuthController.cs`, `UsersController.cs`, `UserContracts.cs`, `TokenService.cs`, `ApiUser.cs`, `AppRoles.cs` y este archivo. El registro en `customers` + `api_users` usa la misma conexión y transacción; agregados bloqueo, desbloqueo Admin, registro y claims de vínculos. `dotnet build` correcto (0 advertencias, 0 errores). No se hicieron escrituras de prueba; Windows App Control bloqueó la carga del DLL al intentar validar el runtime. |
+| 2026-11-25 | Fase 4 | Completa | Creados `EmployeeContracts.cs`, `CustomerContracts.cs` y `EmployeesController.cs`; completado `CustomersController.cs`. Altas/bajas/reactivación que tocan `api_users` comparten transacción entre contextos; las bajas rotan `SecurityStamp`, los DTOs omiten campos sensibles/binarios y el cliente solo opera sobre el `CustomerId` de su claim. `dotnet build` correcto (0 advertencias, 0 errores). Pendiente prueba manual con MySQL local: roles, duplicados, operaciones CRUD, rollback, revocación de tokens, reactivación e intentos IDOR. |
