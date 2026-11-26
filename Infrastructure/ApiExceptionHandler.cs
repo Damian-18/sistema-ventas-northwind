@@ -9,6 +9,19 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken ct)
     {
+        if (exception is ApiProblemException apiProblem)
+        {
+            context.Response.StatusCode = apiProblem.StatusCode;
+            await context.Response.WriteAsJsonAsync(new ProblemDetails
+            {
+                Status = apiProblem.StatusCode,
+                Title = apiProblem.Title,
+                Detail = apiProblem.Message,
+                Extensions = { ["traceId"] = context.TraceIdentifier }
+            }, ct);
+            return true;
+        }
+
         MySqlException? mysql = null;
         for (var current = exception; current is not null; current = current.InnerException)
         {

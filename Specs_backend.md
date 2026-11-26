@@ -158,9 +158,11 @@ Agregar un middleware global en `Program.cs` que inyecte en todas las respuestas
        * Consultar el producto real en BD. Si no existe -> `404 Not Found`.
        * **No comprar descontinuados:** Si `Product.Discontinued == true` -> rechazar toda la venta (`409 Conflict` con mensaje claro).
        * **Control de inventario:** Si `Product.UnitsInStock < item.Quantity` -> rechazar la venta indicando stock insuficiente (`409 Conflict`).
+       * Si `Product.UnitPrice` o `Product.UnitsInStock` es `NULL`, rechazar la venta completa (`409 Conflict`); no sustituirlos por valores enviados por el cliente ni por cero.
        * **Anti-falsificación de precios y descuentos:** Tomar `UnitPrice` exclusivamente de `Product.UnitPrice` en la base de datos y asignar `Discount = 0`.
        * Descontar `Product.UnitsInStock -= item.Quantity`.
     5. Ejecutar la inserción de `Order`, `OrderDetails` y actualización de stock dentro de una **transacción**.
+  * Los importes de respuesta se calculan a partir de los detalles persistidos: subtotal de línea = `UnitPrice * Quantity * (1 - Discount)`, subtotal de la orden = suma de líneas y total = subtotal + `Freight`.
 * **Sin eliminación de ventas:** No exponer `DELETE /api/ventas/{id}`. Las ventas son registros históricos inmutables.
 
 ### 5.6 Catálogo (`Products`, `Categories`, `Suppliers`) y Paqueterías (`Shippers`)

@@ -26,6 +26,9 @@ public class CategoriesController(ContextoDB db) : ControllerBase
     [HttpPost, Authorize(Policy = "WriteCatalog")]
     public async Task<ActionResult<CategoryView>> Create(CategoryInput input, CancellationToken ct)
     {
+        var categoryName = input.CategoryName.Trim();
+        if (await db.Categories.AnyAsync(category => category.CategoryName == categoryName, ct))
+            return Problem("Ya existe una categoría con ese nombre.", statusCode: 409, title: "Categoría duplicada");
         var item = new Category(); input.Apply(item); db.Categories.Add(item); await db.SaveChangesAsync(ct);
         return CreatedAtAction(nameof(GetById), new { id = item.CategoryId }, new CategoryView(item.CategoryId, item.CategoryName, item.Description, item.Picture));
     }
@@ -35,6 +38,9 @@ public class CategoriesController(ContextoDB db) : ControllerBase
     {
         var item = await db.Categories.FindAsync([id], ct);
         if (item is null) return NotFound();
+        var categoryName = input.CategoryName.Trim();
+        if (await db.Categories.AnyAsync(category => category.CategoryId != id && category.CategoryName == categoryName, ct))
+            return Problem("Ya existe una categoría con ese nombre.", statusCode: 409, title: "Categoría duplicada");
         input.Apply(item); await db.SaveChangesAsync(ct); return NoContent();
     }
 

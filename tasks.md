@@ -53,8 +53,8 @@
   * `PUT /{id}/reactivar` (solo `Admin`, reactiva cliente y su `ApiUser` vinculado en transacción).
 
 ## Fase 5: Módulo de Ventas (`OrdersController`), Catálogo y Paqueterías
-* [ ] Crear DTOs de ventas (`Contracts/OrderContracts.cs`): `CreateOrderRequest` (sin `UnitPrice`, `Discount` ni `Total`), `OrderSummaryDto`, `OrderDetailViewDto`.
-* [ ] Crear servicio de negocio `OrderService.cs` (o lógica encapsulada) con transacción que valide:
+* [x] Crear DTOs de ventas (`Contracts/OrderContracts.cs`): `CreateOrderRequest` (sin `UnitPrice`, `Discount` ni `Total`), `OrderSummaryDto`, `OrderDetailViewDto`.
+* [x] Crear servicio de negocio `OrderService.cs` (o lógica encapsulada) con transacción que valide:
   * Cliente existente y activo.
   * `EmployeeId` tomado del JWT para `Admin`/`Empleado` y `null` para compras autónomas de `Cliente`.
   * Si se envía `ShipVia`, validar que exista en `shippers`.
@@ -62,15 +62,15 @@
   * Producto existente y `Discontinued == false`.
   * Stock suficiente (`UnitsInStock >= Quantity`) y descuento de stock.
   * Cálculo de `UnitPrice` **únicamente desde la base de datos** y `Discount = 0`.
-* [ ] Crear `OrdersController.cs` (`/api/ventas`):
+* [x] Crear `OrdersController.cs` (`/api/ventas`):
   * `POST /api/ventas` (asignando `CustomerId` desde JWT si es `Cliente`).
   * `GET /api/ventas` (filtrado por propietario si es `Cliente`).
   * `GET /api/ventas/{id}` (con validación de ownership `403`).
   * Confirmar que no exista ningún endpoint `DELETE` en ventas.
-* [ ] Ajustar catálogo (`ProductsController`, `CategoriesController`, `SuppliersController`):
+* [x] Ajustar catálogo (`ProductsController`, `CategoriesController`, `SuppliersController`):
   * Convertir `DELETE /api/productos/{id}` a **baja lógica** (`Discontinued = true` en lugar de eliminar físicamente).
   * Agregar validación de nombres duplicados (`409 Conflict`) en productos, categorías y proveedores.
-* [ ] Crear `ShippersController.cs` con `GET /api/shippers` (autenticado, devuelve `ShipperId` y `CompanyName`).
+* [x] Crear `ShippersController.cs` con `GET /api/shippers` (autenticado, devuelve `ShipperId` y `CompanyName`).
 
 ## Fase 6: Verificación del Backend
 * [ ] Ejecutar `dotnet build` en configuración `Release` sin errores.
@@ -90,3 +90,4 @@
 | 2026-11-24 | Fase 2 | Completa | Configurados `ForwardedHeaders`, CORS limitado, HTTPS/HSTS y cabeceras globales; añadido filtro de sanitización global y revisado `ApiExceptionHandler`. Modificados `Program.cs`, `appsettings.json`, `ApiExceptionHandler.cs`, `README.md` y este archivo; creados `SecurityHeadersMiddleware.cs` e `InputSanitizer.cs`. `dotnet build` correcto (0 advertencias, 0 errores); comprobaciones HTTP locales confirmaron redirección HTTPS, cabeceras, CORS/HSTS detrás de proxy y rechazo XSS. Configurar `Cors:AllowedOrigins` y las IPs de proxy confiables antes del despliegue. |
 | 2026-11-24 | Fase 3 | Completa | Actualizados `Program.cs` (conexión MySQL scoped compartida y validación de configuración), `AuthController.cs`, `UsersController.cs`, `UserContracts.cs`, `TokenService.cs`, `ApiUser.cs`, `AppRoles.cs` y este archivo. El registro en `customers` + `api_users` usa la misma conexión y transacción; agregados bloqueo, desbloqueo Admin, registro y claims de vínculos. `dotnet build` correcto (0 advertencias, 0 errores). No se hicieron escrituras de prueba; Windows App Control bloqueó la carga del DLL al intentar validar el runtime. |
 | 2026-11-25 | Fase 4 | Completa | Creados `EmployeeContracts.cs`, `CustomerContracts.cs` y `EmployeesController.cs`; completado `CustomersController.cs`. Altas/bajas/reactivación que tocan `api_users` comparten transacción entre contextos; las bajas rotan `SecurityStamp`, los DTOs omiten campos sensibles/binarios y el cliente solo opera sobre el `CustomerId` de su claim. `dotnet build` correcto (0 advertencias, 0 errores). Pendiente prueba manual con MySQL local: roles, duplicados, operaciones CRUD, rollback, revocación de tokens, reactivación e intentos IDOR. |
+| 2026-11-25 | Fase 5 | Completa | Creados `OrderContracts.cs`, `OrderService.cs`, `OrdersController.cs`, `ShippersController.cs` y `ApiProblemException.cs`; actualizados `CatalogContracts.cs`, `ApiExceptionHandler.cs`, `Program.cs`, controladores de productos/categorías/proveedores, `Specs_backend.md` y este archivo. Las ventas validan propiedad/rol, productos, stock y paquetería en transacción serializable; precios/descuentos/importes salen de datos persistidos, y `NULL` en precio/stock rechaza con 409. Productos usan baja lógica; se agregaron controles de duplicados y DTO de shippers. `dotnet build` correcto (0 advertencias, 0 errores). Pendientes pruebas manuales en MySQL: venta por cada rol, propiedad/403, stock y rollback, campos nulos, duplicados, baja lógica, filtros/paginación y consulta de shippers. |

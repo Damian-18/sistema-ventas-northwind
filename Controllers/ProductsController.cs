@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Equipo5.Api.Contracts;
 using Equipo5.Api.Data;
+using Equipo5.Api.Infrastructure;
 using Equipo5.Api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,8 +14,14 @@ public class ProductsController(ContextoDB db) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<ProductView>>> Get(CancellationToken ct,
-        [Range(1, 100)] int limit = 20, [Range(0, int.MaxValue)] int offset = 0) =>
-        await db.Products.AsNoTracking().OrderBy(p => p.ProductId).Skip(offset).Take(limit).Select(ProductView.Select).ToListAsync(ct);
+        [Range(1, 100)] int limit = 20, [Range(0, int.MaxValue)] int offset = 0)
+    {
+        var query = db.Products.AsNoTracking();
+        if (User.IsInRole(AppRoles.Cliente))
+            query = query.Where(product => product.Discontinued == 0);
+
+        return await query.OrderBy(p => p.ProductId).Skip(offset).Take(limit).Select(ProductView.Select).ToListAsync(ct);
+    }
 
     [HttpGet]
     [Route("paginados")]
@@ -26,6 +33,8 @@ public class ProductsController(ContextoDB db) : ControllerBase
         pageSize = pageSize < 1 ? 12 : Math.Min(pageSize, 48);
 
         var products = db.Products.AsNoTracking();
+        if (User.IsInRole(AppRoles.Cliente))
+            products = products.Where(product => product.Discontinued == 0);
         if (!string.IsNullOrWhiteSpace(search))
         {
             var searchTerm = search.Trim().ToLowerInvariant();
@@ -56,7 +65,10 @@ public class ProductsController(ContextoDB db) : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ProductView>> GetById(int id, CancellationToken ct)
     {
-        var item = await db.Products.AsNoTracking().Where(p => p.ProductId == id).Select(ProductView.Select).SingleOrDefaultAsync(ct);
+        var query = db.Products.AsNoTracking().Where(p => p.ProductId == id);
+        if (User.IsInRole(AppRoles.Cliente))
+            query = query.Where(product => product.Discontinued == 0);
+        var item = await query.Select(ProductView.Select).SingleOrDefaultAsync(ct);
         return item is null ? NotFound() : Ok(item);
     }
 
@@ -64,6 +76,9 @@ public class ProductsController(ContextoDB db) : ControllerBase
     public async Task<ActionResult<ProductView>> Create(ProductInput input, CancellationToken ct)
     {
         if (await ValidateReferences(input, ct) is { } error) return BadRequest(new { message = error });
+        var productName = input.ProductName.Trim();
+        if (await db.Products.AnyAsync(product => product.ProductName == productName, ct))
+            return Problem("Ya existe un producto con ese nombre.", statusCode: 409, title: "Producto duplicado");
         var item = new Product(); input.Apply(item); db.Products.Add(item); await db.SaveChangesAsync(ct);
         var result = await db.Products.Where(p => p.ProductId == item.ProductId).Select(ProductView.Select).SingleAsync(ct);
         return CreatedAtAction(nameof(GetById), new { id = item.ProductId }, result);
@@ -75,6 +90,9 @@ public class ProductsController(ContextoDB db) : ControllerBase
         var item = await db.Products.FindAsync([id], ct);
         if (item is null) return NotFound();
         if (await ValidateReferences(input, ct) is { } error) return BadRequest(new { message = error });
+        var productName = input.ProductName.Trim();
+        if (await db.Products.AnyAsync(product => product.ProductId != id && product.ProductName == productName, ct))
+            return Problem("Ya existe un producto con ese nombre.", statusCode: 409, title: "Producto duplicado");
         input.Apply(item); await db.SaveChangesAsync(ct); return NoContent();
     }
 
@@ -83,9 +101,9 @@ public class ProductsController(ContextoDB db) : ControllerBase
     {
         var item = await db.Products.FindAsync([id], ct);
         if (item is null) return NotFound();
-        if (await db.OrderDetails.AnyAsync(d => d.ProductId == id, ct))
-            return Conflict(new { message = "El producto tiene pedidos. Puedes marcarlo como discontinued en lugar de eliminarlo." });
-        db.Products.Remove(item); await db.SaveChangesAsync(ct); return NoContent();
+        item.Discontinued = 1;
+        await db.SaveChangesAsync(ct);
+        return NoContent();
     }
 
     private async Task<string?> ValidateReferences(ProductInput input, CancellationToken ct)

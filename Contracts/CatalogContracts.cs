@@ -74,3 +74,5 @@ public record SupplierView(int SupplierId, string CompanyName, string? ContactNa
     public static readonly Expression<Func<Supplier, SupplierView>> Select = s => new(s.SupplierId,
         s.CompanyName, s.ContactName, s.ContactTitle, s.Address, s.City, s.Region, s.PostalCode, s.Country, s.Phone, s.Fax, s.HomePage);
 }
+
+public record ShipperView(int ShipperId, string CompanyName);

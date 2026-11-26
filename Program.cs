@@ -43,6 +43,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 builder.Services.AddScoped<IPasswordHasher<ApiUser>, PasswordHasher<ApiUser>>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<NorthwindService>();
+builder.Services.AddScoped<OrderService>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
 {
     options.MapInboundClaims = false;

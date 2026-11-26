@@ -26,6 +26,9 @@ public class SuppliersController(ContextoDB db) : ControllerBase
     [HttpPost, Authorize(Policy = "WriteCatalog")]
     public async Task<ActionResult<SupplierView>> Create(SupplierInput input, CancellationToken ct)
     {
+        var companyName = input.CompanyName.Trim();
+        if (await db.Suppliers.AnyAsync(supplier => supplier.CompanyName == companyName, ct))
+            return Problem("Ya existe un proveedor con ese nombre de empresa.", statusCode: 409, title: "Proveedor duplicado");
         var item = new Supplier(); input.Apply(item); db.Suppliers.Add(item); await db.SaveChangesAsync(ct);
         var result = await db.Suppliers.Where(s => s.SupplierId == item.SupplierId).Select(SupplierView.Select).SingleAsync(ct);
         return CreatedAtAction(nameof(GetById), new { id = item.SupplierId }, result);
@@ -36,6 +39,9 @@ public class SuppliersController(ContextoDB db) : ControllerBase
     {
         var item = await db.Suppliers.FindAsync([id], ct);
         if (item is null) return NotFound();
+        var companyName = input.CompanyName.Trim();
+        if (await db.Suppliers.AnyAsync(supplier => supplier.SupplierId != id && supplier.CompanyName == companyName, ct))
+            return Problem("Ya existe un proveedor con ese nombre de empresa.", statusCode: 409, title: "Proveedor duplicado");
         input.Apply(item); await db.SaveChangesAsync(ct); return NoContent();
     }
 
